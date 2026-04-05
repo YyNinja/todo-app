@@ -77,7 +77,7 @@ function CreateListModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const [showCreate, setShowCreate] = useState(false);
   const { data: lists, isLoading } = trpc.lists.list.useQuery();
@@ -87,9 +87,10 @@ export function Sidebar() {
   return (
     <>
       {showCreate && <CreateListModal onClose={() => setShowCreate(false)} />}
-      <nav className="w-56 shrink-0 flex flex-col py-6 px-3 border-r border-gray-200 bg-white">
+      <nav className="w-56 h-full flex flex-col py-6 px-3 border-r border-gray-200 bg-white overflow-y-auto">
         <Link
           href="/dashboard"
+          onClick={onNavigate}
           className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
             isMyTasks
               ? "bg-indigo-50 text-indigo-700"
@@ -137,6 +138,7 @@ export function Sidebar() {
                 <li key={list.id}>
                   <Link
                     href={`/dashboard/lists/${list.id}`}
+                    onClick={onNavigate}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
                       isActive
                         ? "bg-indigo-50 text-indigo-700 font-medium"
