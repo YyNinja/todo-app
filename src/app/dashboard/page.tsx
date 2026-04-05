@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { SignOutButton } from "@/components/sign-out-button";
+import { QuickAddModal } from "@/components/quick-add-modal";
+import { TopThreeWidget } from "@/components/top-three-widget";
+import { TodoList } from "@/components/todo-list";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -19,6 +22,7 @@ export default async function DashboardPage() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <span className="text-lg font-semibold text-indigo-600">TodoAI</span>
           <div className="flex items-center gap-4">
+            <QuickAddModal />
             <Link
               href="/profile"
               className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
@@ -42,18 +46,33 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back{user.name ? `, ${user.name.split(" ")[0]}` : ""}!
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Good{getGreeting()},{" "}
+            {user.name?.split(" ")[0] ?? "there"}!
           </h1>
-          <p className="mt-3 text-gray-500">Your AI-powered todo dashboard is coming soon.</p>
-          <div className="mt-8 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-sm text-indigo-700">
-            <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
-            Todos feature in development — W2
-          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            Here&apos;s what needs your attention today.
+          </p>
         </div>
+
+        <TopThreeWidget />
+
+        <section>
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
+            All Tasks
+          </h2>
+          <TodoList />
+        </section>
       </main>
     </div>
   );
+}
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return " morning";
+  if (h < 17) return " afternoon";
+  return " evening";
 }

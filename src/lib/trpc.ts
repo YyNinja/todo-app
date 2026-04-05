@@ -1,14 +1,6 @@
 "use client";
 
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
-import superjson from "superjson";
+import { createTRPCReact } from "@trpc/react-query";
 import type { AppRouter } from "@/server/routers/_app";
 
-export const trpc = createTRPCClient<AppRouter>({
-  links: [
-    httpBatchLink({
-      url: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/trpc`,
-      transformer: superjson,
-    }),
-  ],
-});
+export const trpc = createTRPCReact<AppRouter>();

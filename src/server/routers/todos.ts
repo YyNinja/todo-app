@@ -81,6 +81,12 @@ export const todosRouter = router({
       return todo;
     }),
 
+  parseNaturalLanguage: protectedProcedure
+    .input(z.object({ text: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      return parseTodoFromNaturalLanguage(input.text);
+    }),
+
   createFromNaturalLanguage: protectedProcedure
     .input(z.object({ text: z.string().min(1), listId: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
@@ -153,8 +159,6 @@ export const todosRouter = router({
 
   getTopThree: protectedProcedure.query(async ({ ctx }) => {
     const cacheKey = `todos:top3:${ctx.userId}`;
-    const cached = await getCache(cacheKey);
-    if (cached) return cached;
 
     const todos = await ctx.db.todo.findMany({
       where: { userId: ctx.userId, completed: false },
@@ -162,16 +166,31 @@ export const todosRouter = router({
       orderBy: { createdAt: "desc" },
     });
 
-    if (todos.length === 0) return [];
+    type TopThreeItem = { todo: (typeof todos)[0]; reasoning: string | null };
 
-    const prioritized = await prioritizeTodos(todos);
-    const top3Ids = prioritized
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-      .map((p) => p.todoId);
+    const cached = await getCache<TopThreeItem[]>(cacheKey);
+    if (cached) return cached;
 
-    const top3 = todos.filter((t) => top3Ids.includes(t.id));
-    await setCache(cacheKey, top3, 300);
-    return top3;
+    if (todos.length === 0) return [] as TopThreeItem[];
+
+    try {
+      const prioritized = await prioritizeTodos(todos);
+      const top3 = (prioritized
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+        .map((p) => ({
+          todo: todos.find((t: { id: string }) => t.id === p.todoId),
+          reasoning: p.reasoning as string | null,
+        }))
+        .filter((item) => !!item.todo) as TopThreeItem[]);
+
+      await setCache(cacheKey, top3, 300);
+      return top3;
+    } catch {
+      // Graceful degradation: AI unavailable, fall back to recency order
+      return todos
+        .slice(0, 3)
+        .map((todo: TopThreeItem["todo"]): TopThreeItem => ({ todo, reasoning: null }));
+    }
   }),
 });
