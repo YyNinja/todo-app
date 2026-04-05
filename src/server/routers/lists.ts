@@ -65,6 +65,53 @@ export const listsRouter = router({
       return { success: true };
     }),
 
+  getById: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const list = await ctx.db.list.findFirst({
+        where: {
+          id: input.id,
+          OR: [
+            { ownerId: ctx.userId },
+            { members: { some: { userId: ctx.userId } } },
+          ],
+        },
+        include: {
+          owner: { select: { id: true, name: true, email: true, image: true } },
+          members: {
+            include: {
+              user: { select: { id: true, name: true, email: true, image: true } },
+            },
+          },
+          _count: { select: { todos: true } },
+        },
+      });
+      if (!list) throw new TRPCError({ code: "NOT_FOUND" });
+      return list;
+    }),
+
+  removeMember: protectedProcedure
+    .input(z.object({ listId: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const list = await ctx.db.list.findFirst({
+        where: { id: input.listId, ownerId: ctx.userId },
+      });
+      if (!list) throw new TRPCError({ code: "NOT_FOUND" });
+      await ctx.db.listMember.deleteMany({
+        where: { listId: input.listId, userId: input.userId },
+      });
+      return { success: true };
+    }),
+
+  leave: protectedProcedure
+    .input(z.object({ listId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.listMember.deleteMany({
+        where: { listId: input.listId, userId: ctx.userId },
+      });
+      return { success: true };
+    }),
+
   invite: protectedProcedure
     .input(
       z.object({

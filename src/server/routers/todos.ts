@@ -29,9 +29,26 @@ export const todosRouter = router({
       const cached = await getCache(cacheKey);
       if (cached) return cached;
 
+      // For shared lists, show all todos in the list (not just current user's)
+      let listAccessFilter: object = { userId: ctx.userId };
+      if (input.listId) {
+        const listAccess = await ctx.db.list.findFirst({
+          where: {
+            id: input.listId,
+            OR: [
+              { ownerId: ctx.userId },
+              { members: { some: { userId: ctx.userId } } },
+            ],
+          },
+        });
+        if (listAccess) {
+          listAccessFilter = {};
+        }
+      }
+
       const todos = await ctx.db.todo.findMany({
         where: {
-          userId: ctx.userId,
+          ...listAccessFilter,
           ...(input.listId ? { listId: input.listId } : {}),
           ...(input.completed !== undefined
             ? { completed: input.completed }
@@ -41,6 +58,7 @@ export const todosRouter = router({
         take: input.limit + 1,
         orderBy: [{ priority: "desc" }, { dueDate: "asc" }, { createdAt: "desc" }],
         include: {
+          user: { select: { id: true, name: true, email: true, image: true } },
           comments: { take: 3, orderBy: { createdAt: "desc" } },
         },
       });
@@ -132,7 +150,13 @@ export const todosRouter = router({
     .input(z.object({ id: z.string(), completed: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.todo.findFirst({
-        where: { id: input.id, userId: ctx.userId },
+        where: {
+          id: input.id,
+          OR: [
+            { userId: ctx.userId },
+            { list: { OR: [{ ownerId: ctx.userId }, { members: { some: { userId: ctx.userId } } }] } },
+          ],
+        },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
