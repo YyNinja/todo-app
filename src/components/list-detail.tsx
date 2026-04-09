@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -384,6 +384,7 @@ export function ListDetail({ listId }: { listId: string }) {
   const router = useRouter();
   const [showInvite, setShowInvite] = useState(false);
   const [optimisticItems, setOptimisticItems] = useState<Todo[] | null>(null);
+  const [prevServerItems, setPrevServerItems] = useState<Todo[] | undefined>(undefined);
   const utils = trpc.useUtils();
 
   const { data: session } = authClient.useSession();
@@ -397,11 +398,11 @@ export function ListDetail({ listId }: { listId: string }) {
   );
 
   const serverItems = (data as { items: Todo[]; nextCursor: string | null } | undefined)?.items;
-  const displayItems = optimisticItems ?? serverItems ?? [];
-
-  useEffect(() => {
+  if (prevServerItems !== serverItems) {
+    setPrevServerItems(serverItems);
     setOptimisticItems(null);
-  }, [serverItems]);
+  }
+  const displayItems = optimisticItems ?? serverItems ?? [];
 
   const deleteList = trpc.lists.delete.useMutation({
     onSuccess: () => {
