@@ -40,6 +40,15 @@ export function QuickAddModal() {
     },
   });
 
+  function handleClose() {
+    setOpen(false);
+    setText("");
+    setParsed(null);
+    setStep("input");
+    parseMutation.reset();
+    createMutation.reset();
+  }
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -59,15 +68,6 @@ export function QuickAddModal() {
       setTimeout(() => textareaRef.current?.focus(), 0);
     }
   }, [open, step]);
-
-  function handleClose() {
-    setOpen(false);
-    setText("");
-    setParsed(null);
-    setStep("input");
-    parseMutation.reset();
-    createMutation.reset();
-  }
 
   function handleParse(e: React.FormEvent) {
     e.preventDefault();
