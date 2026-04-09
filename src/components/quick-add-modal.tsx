@@ -33,8 +33,10 @@ export function QuickAddModal() {
     onSuccess: () => {
       utils.todos.list.invalidate();
       utils.todos.getTopThree.invalidate();
-      // eslint-disable-next-line react-compiler/react-compiler
-      handleClose();
+      setOpen(false);
+      setText("");
+      setParsed(null);
+      setStep("input");
     },
   });
 
