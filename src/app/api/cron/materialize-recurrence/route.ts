@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { nextOccurrenceDate, createNextOccurrence } from "@/lib/recurrence";
 import type { RecurrenceRule } from "@/lib/recurrence";
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   // Find only recurring template todos (not instances) that are not completed
   const recurringTodos = await db.todo.findMany({
     where: {
-      recurrence: { not: null },
+      recurrence: { not: Prisma.AnyNull },
       recurringParentId: null,
       completed: false,
     },
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
       });
       if (futureChild) return;
 
-      const rule = todo.recurrence as RecurrenceRule;
+      const rule = todo.recurrence as unknown as RecurrenceRule;
       const fromDate = todo.dueDate ?? now;
       const nextDate = nextOccurrenceDate(rule, fromDate);
       if (!nextDate) return;

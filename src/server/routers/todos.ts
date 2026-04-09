@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { protectedProcedure, router } from "../trpc/trpc";
 import { parseTodoFromNaturalLanguage, prioritizeTodos } from "@/lib/ai";
 import { invalidateCache, getCache, setCache } from "@/lib/redis";
@@ -96,6 +97,7 @@ export const todosRouter = router({
           ...input,
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
           userId: ctx.userId,
+          recurrence: input.recurrence as Prisma.InputJsonValue ?? undefined,
         },
       });
       await invalidateCache(`todos:${ctx.userId}:*`);
@@ -143,6 +145,7 @@ export const todosRouter = router({
         data: {
           ...data,
           dueDate: data.dueDate ? new Date(data.dueDate) : data.dueDate,
+          recurrence: data.recurrence as Prisma.InputJsonValue ?? undefined,
         },
       });
       await invalidateCache(`todos:${ctx.userId}:*`);
