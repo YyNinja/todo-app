@@ -96,3 +96,165 @@ Return ONLY valid JSON array.`,
 
   return JSON.parse(jsonMatch[0]) as TodoPrioritization[];
 }
+
+// ── Daily Briefing ──────────────────────────────────────────────────────────
+
+export interface DailyBriefing {
+  summary: string;
+  topPriorities: string[];
+  insights: string;
+}
+
+export async function getDailyBriefing(
+  todos: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    dueDate?: Date | null;
+    completed: boolean;
+    tags: string[];
+  }>
+): Promise<DailyBriefing> {
+  const activeTodos = todos.filter((t) => !t.completed);
+
+  const message = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 600,
+    messages: [
+      {
+        role: "user",
+        content: `Today is ${new Date().toISOString().split("T")[0]}.
+
+Generate a daily briefing for these ${activeTodos.length} active tasks. Return ONLY valid JSON with:
+- summary: 1-2 sentence overview of the day's workload
+- topPriorities: array of 3 task titles to focus on today (most important/urgent first)
+- insights: 1 sentence of actionable advice for the day
+
+Tasks:
+${JSON.stringify(activeTodos, null, 2)}
+
+Return ONLY valid JSON.`,
+      },
+    ],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") throw new Error("Unexpected AI response type");
+
+  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON found in AI response");
+
+  return JSON.parse(jsonMatch[0]) as DailyBriefing;
+}
+
+// ── Task Breakdown ──────────────────────────────────────────────────────────
+
+export async function breakdownTask(todo: {
+  id: string;
+  title: string;
+  description?: string | null;
+}): Promise<string[]> {
+  const message = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 500,
+    messages: [
+      {
+        role: "user",
+        content: `Break down this task into 3-7 concrete subtasks. Return ONLY a JSON array of short subtask title strings.
+
+Task: "${todo.title}"${todo.description ? `\nDescription: "${todo.description}"` : ""}
+
+Return ONLY a JSON array of strings, e.g. ["subtask 1", "subtask 2"]`,
+      },
+    ],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") throw new Error("Unexpected AI response type");
+
+  const jsonMatch = content.text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error("No JSON array found in AI response");
+
+  return JSON.parse(jsonMatch[0]) as string[];
+}
+
+// ── Smart Scheduling ────────────────────────────────────────────────────────
+
+export interface DueDateSuggestion {
+  date: string;
+  reasoning: string;
+}
+
+export async function suggestDueDate(
+  todo: { id: string; title: string; priority: string },
+  existingTodos: Array<{ title: string; dueDate?: Date | null; priority: string }>
+): Promise<DueDateSuggestion> {
+  const message = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 300,
+    messages: [
+      {
+        role: "user",
+        content: `Today is ${new Date().toISOString().split("T")[0]}.
+
+Suggest a due date for this task, considering existing workload. Return ONLY valid JSON with:
+- date: ISO date string (YYYY-MM-DD)
+- reasoning: 1 sentence explaining the choice
+
+Task: "${todo.title}" (priority: ${todo.priority})
+
+Existing tasks with due dates:
+${JSON.stringify(
+  existingTodos.filter((t) => t.dueDate).map((t) => ({ title: t.title, dueDate: t.dueDate, priority: t.priority })),
+  null,
+  2
+)}
+
+Return ONLY valid JSON.`,
+      },
+    ],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") throw new Error("Unexpected AI response type");
+
+  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON found in AI response");
+
+  return JSON.parse(jsonMatch[0]) as DueDateSuggestion;
+}
+
+// ── Semantic Search ─────────────────────────────────────────────────────────
+
+export async function semanticSearchTodos(
+  query: string,
+  todos: Array<{ id: string; title: string; description?: string | null; tags: string[] }>
+): Promise<string[]> {
+  if (todos.length === 0) return [];
+
+  const message = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 500,
+    messages: [
+      {
+        role: "user",
+        content: `Find todos that are semantically relevant to the search query. Return ONLY a JSON array of todo IDs, ordered from most to least relevant. Include only genuinely relevant results.
+
+Query: "${query}"
+
+Todos:
+${JSON.stringify(todos.map((t) => ({ id: t.id, title: t.title, description: t.description, tags: t.tags })), null, 2)}
+
+Return ONLY a JSON array of matching todo ID strings.`,
+      },
+    ],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") throw new Error("Unexpected AI response type");
+
+  const jsonMatch = content.text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) return [];
+
+  return JSON.parse(jsonMatch[0]) as string[];
+}

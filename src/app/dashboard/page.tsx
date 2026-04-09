@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { TopThreeWidget } from "@/components/top-three-widget";
 import { TodoList } from "@/components/todo-list";
+import { DailyBriefing } from "@/components/daily-briefing";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -18,6 +19,8 @@ export default async function DashboardPage() {
           Here&apos;s what needs your attention today.
         </p>
       </div>
+
+      <DailyBriefing />
 
       <TopThreeWidget />
 

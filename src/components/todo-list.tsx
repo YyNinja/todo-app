@@ -3,6 +3,9 @@
 import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { keepPreviousData } from "@tanstack/react-query";
+import { BreakdownButton } from "@/components/task-breakdown-modal";
+import { SmartScheduleButton } from "@/components/smart-schedule-button";
+import { SemanticSearchBar } from "@/components/semantic-search-bar";
 
 type Priority = "low" | "medium" | "high" | "urgent";
 type Filter = "all" | "active" | "completed";
@@ -236,6 +239,9 @@ function TodoItem({
 }) {
   const [editing, setEditing] = useState(false);
   const utils = trpc.useUtils();
+  const updateDueDate = trpc.todos.update.useMutation({
+    onSuccess: () => utils.todos.list.invalidate(),
+  });
 
   const complete = trpc.todos.complete.useMutation({
     onSettled: () => utils.todos.list.invalidate(),
@@ -361,6 +367,17 @@ function TodoItem({
 
       {/* Actions */}
       <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <BreakdownButton
+          todoId={todo.id}
+          todoTitle={todo.title}
+          onSubtasksCreated={() => utils.todos.list.invalidate()}
+        />
+        <SmartScheduleButton
+          todoId={todo.id}
+          onApply={(date) =>
+            updateDueDate.mutate({ id: todo.id, dueDate: new Date(date + "T12:00:00").toISOString() })
+          }
+        />
         <button
           onClick={() => setEditing(true)}
           className="p-1.5 text-gray-300 hover:text-gray-700 rounded transition-colors"
@@ -394,6 +411,7 @@ export function TodoList() {
   const [filter, setFilter] = useState<Filter>("active");
   const [optimisticItems, setOptimisticItems] = useState<Todo[] | null>(null);
   const [prevServerItems, setPrevServerItems] = useState<Todo[] | undefined>(undefined);
+  const [semanticResults, setSemanticResults] = useState<string[] | null>(null);
 
   const queryInput = {
     completed:
@@ -410,7 +428,12 @@ export function TodoList() {
     setPrevServerItems(serverItems);
     setOptimisticItems(null);
   }
-  const displayItems = optimisticItems ?? serverItems ?? [];
+  const baseItems = optimisticItems ?? serverItems ?? [];
+  const displayItems = semanticResults
+    ? baseItems
+        .filter((t) => semanticResults.includes(t.id))
+        .sort((a, b) => semanticResults.indexOf(a.id) - semanticResults.indexOf(b.id))
+    : baseItems;
 
   const handleOptimisticComplete = useCallback(
     (id: string, completed: boolean) => {
@@ -444,7 +467,7 @@ export function TodoList() {
   return (
     <div>
       {/* Filter tabs + count */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
           {FILTERS.map((f) => (
             <button
@@ -463,11 +486,21 @@ export function TodoList() {
             </button>
           ))}
         </div>
-        {filter !== "completed" && serverItems && (
+        {filter !== "completed" && serverItems && !semanticResults && (
           <span className="text-xs text-gray-400">
             {activeCount} remaining
           </span>
         )}
+        {semanticResults && (
+          <span className="text-xs text-indigo-500 font-medium">
+            {displayItems.length} AI match{displayItems.length !== 1 ? "es" : ""}
+          </span>
+        )}
+      </div>
+
+      {/* Semantic search */}
+      <div className="mb-4">
+        <SemanticSearchBar onResults={setSemanticResults} />
       </div>
 
       {/* Inline create form */}
