@@ -34,12 +34,15 @@ export function SemanticSearchBar({ onResults }: SemanticSearchBarProps) {
     }
   );
 
+  // Adjust state during render when a FORBIDDEN error is received.
+  const [prevError, setPrevError] = useState(error);
+  if (prevError !== error && error?.data?.code === "FORBIDDEN") {
+    setPrevError(error);
+    setEnabled(false);
+    setShowUpgrade(true);
+  }
+
   useEffect(() => {
-    if (error?.data?.code === "FORBIDDEN") {
-      setEnabled(false);
-      setShowUpgrade(true);
-      return;
-    }
     if (!enabled || !debouncedQuery.trim()) {
       onResults(null);
       return;
@@ -47,7 +50,7 @@ export function SemanticSearchBar({ onResults }: SemanticSearchBarProps) {
     if (data) {
       onResults(data);
     }
-  }, [data, error, enabled, debouncedQuery, onResults]);
+  }, [data, enabled, debouncedQuery, onResults]);
 
   function handleToggle() {
     const next = !enabled;
