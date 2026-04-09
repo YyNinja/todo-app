@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 
@@ -11,13 +11,13 @@ export default function NotificationsSettingsPage() {
   const [emailDigest, setEmailDigest] = useState(true);
   const [emailReminders, setEmailReminders] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [prevData, setPrevData] = useState(data);
 
-  useEffect(() => {
-    if (data) {
-      setEmailDigest(data.emailDigest);
-      setEmailReminders(data.emailReminders);
-    }
-  }, [data]);
+  if (prevData !== data && data) {
+    setPrevData(data);
+    setEmailDigest(data.emailDigest);
+    setEmailReminders(data.emailReminders);
+  }
 
   async function handleToggle(field: "emailDigest" | "emailReminders", value: boolean) {
     if (field === "emailDigest") setEmailDigest(value);
