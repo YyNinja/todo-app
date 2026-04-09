@@ -31,6 +31,7 @@ model User {
   lists       List[]
   listMembers ListMember[]
   comments    Comment[]
+  insights    UserInsight[]
 }
 
 enum BillingStatus {
@@ -117,6 +118,7 @@ model Todo {
   title             String
   description       String?
   completed         Boolean   @default(false)
+  completedAt       DateTime?
   priority          Priority  @default(medium)
   dueDate           DateTime?
   tags              String[]
@@ -157,4 +159,17 @@ model Comment {
 
   todo Todo @relation(fields: [todoId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserInsight {
+  id        String   @id @default(cuid())
+  userId    String
+  weekStart DateTime
+  insight   String
+  stats     Json
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
 }
