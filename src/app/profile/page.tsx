@@ -81,7 +81,13 @@ export default async function ProfilePage() {
             </div>
           </dl>
 
-          <div className="mt-8 pt-6 border-t border-gray-100">
+          <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col gap-3">
+            <Link
+              href="/settings/notifications"
+              className="w-full text-center text-sm font-medium text-indigo-600 hover:text-indigo-800 py-2 rounded-lg hover:bg-indigo-50 transition-colors"
+            >
+              Notification preferences
+            </Link>
             <SignOutButton className="w-full" />
           </div>
         </div>
