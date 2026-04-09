@@ -37,30 +37,51 @@ export async function POST(request: NextRequest) {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.mode !== "subscription") break;
 
+      const workspaceId = session.metadata?.workspaceId;
       const userId = session.metadata?.userId;
-      if (!userId) break;
 
-      const subscriptionId = session.subscription as string;
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-        expand: ["items"],
-      });
-      const periodEnd = getSubscriptionPeriodEnd(subscription);
+      if (workspaceId) {
+        // Team workspace checkout
+        const subscriptionId = session.subscription as string;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+          expand: ["items"],
+        });
+        const periodEnd = getSubscriptionPeriodEnd(subscription);
+        const seats = subscription.items.data[0]?.quantity ?? 1;
 
-      await db.user.update({
-        where: { id: userId },
-        data: {
-          billingStatus: "pro",
-          stripeCustomerId: session.customer as string,
-          stripeSubscriptionId: subscriptionId,
-          stripeCurrentPeriodEnd: periodEnd,
-        },
-      });
+        await db.workspace.update({
+          where: { id: workspaceId },
+          data: {
+            billingStatus: "pro",
+            stripeCustomerId: session.customer as string,
+            stripeSubscriptionId: subscriptionId,
+            stripeCurrentPeriodEnd: periodEnd,
+            seatCount: seats,
+          },
+        });
+      } else if (userId) {
+        // Individual user checkout
+        const subscriptionId = session.subscription as string;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+          expand: ["items"],
+        });
+        const periodEnd = getSubscriptionPeriodEnd(subscription);
+
+        await db.user.update({
+          where: { id: userId },
+          data: {
+            billingStatus: "pro",
+            stripeCustomerId: session.customer as string,
+            stripeSubscriptionId: subscriptionId,
+            stripeCurrentPeriodEnd: periodEnd,
+          },
+        });
+      }
       break;
     }
 
     case "invoice.payment_succeeded": {
       const invoice = event.data.object as Stripe.Invoice;
-      // In 2026-03-25.dahlia API, subscription is in invoice.parent.subscription_details.subscription
       const parent = invoice.parent;
       const subscriptionId =
         parent?.type === "subscription_details"
@@ -73,10 +94,19 @@ export async function POST(request: NextRequest) {
       });
       const periodEnd = getSubscriptionPeriodEnd(subscription);
 
-      await db.user.updateMany({
-        where: { stripeSubscriptionId: subscriptionId },
-        data: { stripeCurrentPeriodEnd: periodEnd },
-      });
+      // Try user first, then workspace
+      const [userCount, workspaceCount] = await Promise.all([
+        db.user.updateMany({
+          where: { stripeSubscriptionId: subscriptionId },
+          data: { stripeCurrentPeriodEnd: periodEnd },
+        }),
+        db.workspace.updateMany({
+          where: { stripeSubscriptionId: subscriptionId },
+          data: { stripeCurrentPeriodEnd: periodEnd },
+        }),
+      ]);
+      void userCount;
+      void workspaceCount;
       break;
     }
 
@@ -85,27 +115,38 @@ export async function POST(request: NextRequest) {
       const periodEnd = getSubscriptionPeriodEnd(subscription);
       const status =
         subscription.status === "active" ? "pro" : "cancelled";
+      const seats = subscription.items.data[0]?.quantity ?? 1;
 
-      await db.user.updateMany({
-        where: { stripeSubscriptionId: subscription.id },
-        data: {
-          billingStatus: status,
-          stripeCurrentPeriodEnd: periodEnd,
-        },
-      });
+      await Promise.all([
+        db.user.updateMany({
+          where: { stripeSubscriptionId: subscription.id },
+          data: { billingStatus: status, stripeCurrentPeriodEnd: periodEnd },
+        }),
+        db.workspace.updateMany({
+          where: { stripeSubscriptionId: subscription.id },
+          data: {
+            billingStatus: status,
+            stripeCurrentPeriodEnd: periodEnd,
+            seatCount: seats,
+          },
+        }),
+      ]);
       break;
     }
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
 
-      await db.user.updateMany({
-        where: { stripeSubscriptionId: subscription.id },
-        data: {
-          billingStatus: "cancelled",
-          stripeCurrentPeriodEnd: null,
-        },
-      });
+      await Promise.all([
+        db.user.updateMany({
+          where: { stripeSubscriptionId: subscription.id },
+          data: { billingStatus: "cancelled", stripeCurrentPeriodEnd: null },
+        }),
+        db.workspace.updateMany({
+          where: { stripeSubscriptionId: subscription.id },
+          data: { billingStatus: "cancelled", stripeCurrentPeriodEnd: null },
+        }),
+      ]);
       break;
     }
   }

@@ -25,12 +25,14 @@ model User {
   emailReminders   Boolean   @default(true)
   lastDigestSentAt DateTime?
 
-  sessions    Session[]
-  accounts    Account[]
-  todos       Todo[]
-  lists       List[]
-  listMembers ListMember[]
-  comments    Comment[]
+  sessions         Session[]
+  accounts         Account[]
+  todos            Todo[]
+  lists            List[]
+  listMembers      ListMember[]
+  comments         Comment[]
+  ownedWorkspaces  Workspace[]
+  workspaceMembers WorkspaceMember[]
 }
 
 enum BillingStatus {
@@ -79,18 +81,57 @@ model Verification {
   updatedAt  DateTime @updatedAt
 }
 
+model Workspace {
+  id                     String        @id @default(cuid())
+  name                   String
+  slug                   String        @unique
+  ownerId                String
+  billingStatus          BillingStatus @default(free)
+  stripeCustomerId       String?       @unique
+  stripeSubscriptionId   String?       @unique
+  stripeCurrentPeriodEnd DateTime?
+  seatCount              Int           @default(1)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  owner   User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members WorkspaceMember[]
+  lists   List[]
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(member)
+  joinedAt    DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+}
+
+enum WorkspaceRole {
+  owner
+  admin
+  member
+}
+
 model List {
   id          String   @id @default(cuid())
   name        String
   description String?
   color       String?
   ownerId     String
+  workspaceId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  owner   User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  todos   Todo[]
-  members ListMember[]
+  owner     User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  workspace Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  todos     Todo[]
+  members   ListMember[]
 }
 
 model ListMember {
