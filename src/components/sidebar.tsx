@@ -96,11 +96,56 @@ function CreateListModal({
   );
 }
 
+function CreateWorkspaceModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState("");
+  const utils = trpc.useUtils();
+
+  const create = trpc.workspaces.create.useMutation({
+    onSuccess: () => {
+      utils.workspaces.list.invalidate();
+      onClose();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">New Workspace</h2>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="My Team"
+          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && name.trim()) create.mutate({ name: name.trim() });
+          }}
+        />
+        <div className="flex gap-2 mt-5 justify-end">
+          <button onClick={onClose} className="text-sm px-4 py-2 text-gray-600 hover:text-gray-800">
+            Cancel
+          </button>
+          <button
+            onClick={() => create.mutate({ name: name.trim() })}
+            disabled={!name.trim() || create.isPending}
+            className="text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50 hover:bg-indigo-700 transition-colors"
+          >
+            {create.isPending ? "Creating…" : "Create"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const [showCreate, setShowCreate] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const { data: lists, isLoading } = trpc.lists.list.useQuery();
+  const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
+  const { data: lists, isLoading: listsLoading } = trpc.lists.list.useQuery();
+  const { data: workspaces } = trpc.workspaces.list.useQuery();
   const { data: billing } = trpc.billing.status.useQuery();
 
   const isMyTasks = pathname === "/dashboard";
@@ -115,6 +160,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         />
       )}
       {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
+      {showCreateWorkspace && (
+        <CreateWorkspaceModal onClose={() => setShowCreateWorkspace(false)} />
+      )}
       <nav className="w-56 h-full flex flex-col py-6 px-3 border-r border-gray-200 bg-white overflow-y-auto">
         <Link
           href="/dashboard"
@@ -131,6 +179,59 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           My Tasks
         </Link>
 
+        {/* Workspaces */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between px-3 mb-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Workspaces
+            </span>
+            <button
+              onClick={() => setShowCreateWorkspace(true)}
+              className="h-5 w-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+              title="New workspace"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+
+          {workspaces && workspaces.length === 0 && (
+            <p className="px-3 text-xs text-gray-400 italic">No workspaces yet</p>
+          )}
+
+          <ul className="space-y-0.5">
+            {workspaces?.map((ws) => {
+              const isActive = pathname.startsWith(`/dashboard/workspace/${ws.id}`);
+              const role = ws.members[0]?.role;
+              return (
+                <li key={ws.id}>
+                  <Link
+                    href={`/dashboard/workspace/${ws.id}`}
+                    onClick={onNavigate}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      isActive
+                        ? "bg-indigo-50 text-indigo-700 font-medium"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    }`}
+                  >
+                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="truncate">{ws.name}</span>
+                    {(role === "owner" || role === "admin") && (
+                      <span className="ml-auto text-xs text-gray-400 shrink-0">
+                        {ws._count.members}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Shared Lists */}
         <div className="mt-6">
           <div className="flex items-center justify-between px-3 mb-2">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -147,7 +248,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </button>
           </div>
 
-          {isLoading && (
+          {listsLoading && (
             <div className="space-y-1 px-3">
               {[1, 2].map((i) => (
                 <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />
