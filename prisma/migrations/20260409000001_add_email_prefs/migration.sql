@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "emailDigest" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "emailReminders" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "lastDigestSentAt" TIMESTAMP(3);

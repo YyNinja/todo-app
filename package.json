@@ -17,6 +17,7 @@
     "@anthropic-ai/sdk": "^0.82.0",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.6.0",
+    "@react-email/components": "^1.0.12",
     "@sentry/nextjs": "^8",
     "@stripe/stripe-js": "^9.1.0",
     "@tanstack/react-query": "^5.96.2",
@@ -31,6 +32,7 @@
     "prisma": "^7.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "resend": "^6.10.0",
     "stripe": "^22.0.1",
     "superjson": "^2.2.6",
     "zod": "^4.3.6"

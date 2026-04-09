@@ -1,6 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
+import { sendEmail } from "./resend";
+import WelcomeEmail from "@/emails/welcome";
+import * as React from "react";
 
 export const auth = betterAuth({
   database: prismaAdapter(db, {
@@ -23,6 +26,25 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // refresh if older than 1 day
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          try {
+            await sendEmail(
+              user.email,
+              "Welcome to Todo App!",
+              React.createElement(WelcomeEmail, {
+                userName: user.name ?? user.email,
+              })
+            );
+          } catch {
+            // Don't block signup if email fails
+          }
+        },
+      },
+    },
   },
 });
 

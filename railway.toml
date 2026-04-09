@@ -7,3 +7,23 @@ healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+
+# ---------------------------------------------------------------------------
+# Cron endpoints (call with Authorization: Bearer $CRON_SECRET)
+#
+# POST /api/cron/daily-digest
+#   Schedule: 0 8 * * *  (daily at 08:00 UTC)
+#   Sends a daily digest email to users with emailDigest=true who haven't
+#   received one in the last 24h. Picks their top 3 incomplete todos.
+#
+# POST /api/cron/due-reminders
+#   Schedule: 0 * * * *  (every hour)
+#   Sends due-date reminder emails for todos due in the next 25h.
+#   Redis dedup prevents duplicate sends (key: reminder:{todoId}, TTL 24h).
+#
+# Required env vars:
+#   RESEND_API_KEY       — Resend API key for sending transactional email
+#   EMAIL_FROM           — Sender address (e.g. "TodoAI <noreply@yourdomain.com>")
+#   CRON_SECRET          — Min 32-char random string; used to authenticate cron calls
+#   NEXT_PUBLIC_APP_URL  — Public base URL of the app (e.g. https://todoai.up.railway.app)
+# ---------------------------------------------------------------------------

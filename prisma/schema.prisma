@@ -21,6 +21,10 @@ model User {
   stripeSubscriptionId   String?       @unique
   stripeCurrentPeriodEnd DateTime?
 
+  emailDigest      Boolean   @default(true)
+  emailReminders   Boolean   @default(true)
+  lastDigestSentAt DateTime?
+
   sessions    Session[]
   accounts    Account[]
   todos       Todo[]
