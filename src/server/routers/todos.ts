@@ -168,7 +168,10 @@ export const todosRouter = router({
 
       const todo = await ctx.db.todo.update({
         where: { id: input.id },
-        data: { completed: input.completed },
+        data: {
+          completed: input.completed,
+          completedAt: input.completed ? new Date() : null,
+        },
       });
 
       if (input.completed && existing.recurrence) {

@@ -224,6 +224,47 @@ Return ONLY valid JSON.`,
   return JSON.parse(jsonMatch[0]) as DueDateSuggestion;
 }
 
+// ── Productivity Insight ─────────────────────────────────────────────────────
+
+export interface ProductivityStats {
+  weekStart: string;
+  completedThisWeek: number;
+  totalActive: number;
+  streak: number;
+  topTags: string[];
+  completionRatePercent: number;
+  bestDay?: string;
+}
+
+export async function generateProductivityInsight(
+  stats: ProductivityStats
+): Promise<string> {
+  const message = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 300,
+    messages: [
+      {
+        role: "user",
+        content: `You are a productivity coach. Generate a concise, encouraging, and personalized productivity insight for this user based on their weekly stats. Be specific and actionable. Keep it to 2-3 sentences max.
+
+Week of: ${stats.weekStart}
+Tasks completed this week: ${stats.completedThisWeek}
+Active tasks remaining: ${stats.totalActive}
+Current streak: ${stats.streak} day${stats.streak === 1 ? "" : "s"}
+Completion rate: ${stats.completionRatePercent}%
+Top categories: ${stats.topTags.length > 0 ? stats.topTags.join(", ") : "none"}
+${stats.bestDay ? `Most productive day: ${stats.bestDay}` : ""}
+
+Respond with ONLY the insight text, no quotes or prefixes.`,
+      },
+    ],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") throw new Error("Unexpected AI response type");
+  return content.text.trim();
+}
+
 // ── Semantic Search ─────────────────────────────────────────────────────────
 
 export async function semanticSearchTodos(
