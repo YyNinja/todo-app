@@ -11,10 +11,11 @@ export async function POST(request: Request) {
   const now = new Date();
   const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // Find all recurring template todos that are not completed
+  // Find only recurring template todos (not instances) that are not completed
   const recurringTodos = await db.todo.findMany({
     where: {
       recurrence: { not: null },
+      recurringParentId: null,
       completed: false,
     },
   });
