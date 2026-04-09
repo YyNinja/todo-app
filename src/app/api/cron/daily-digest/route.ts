@@ -34,18 +34,19 @@ export async function POST(request: Request) {
           completed: false,
           OR: [{ dueDate: null }, { dueDate: { lte: todayEnd } }],
         },
-        orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-        take: 3,
+        take: 50,
         select: { title: true, priority: true, dueDate: true },
       });
 
       if (todos.length === 0) return;
 
-      const sorted = todos.sort(
-        (a, b) =>
-          priorityOrder.indexOf(a.priority as (typeof priorityOrder)[number]) -
-          priorityOrder.indexOf(b.priority as (typeof priorityOrder)[number])
-      );
+      const sorted = todos
+        .sort(
+          (a, b) =>
+            priorityOrder.indexOf(a.priority as (typeof priorityOrder)[number]) -
+            priorityOrder.indexOf(b.priority as (typeof priorityOrder)[number])
+        )
+        .slice(0, 3);
 
       try {
         await sendEmail(
