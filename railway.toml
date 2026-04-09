@@ -13,17 +13,15 @@ restartPolicyMaxRetries = 3
 #
 # POST /api/cron/daily-digest
 #   Schedule: 0 8 * * *  (daily at 08:00 UTC)
-#   Sends a daily digest email to users with emailDigest=true who haven't
-#   received one in the last 24h. Picks their top 3 incomplete todos.
-#
 # POST /api/cron/due-reminders
 #   Schedule: 0 * * * *  (every hour)
-#   Sends due-date reminder emails for todos due in the next 25h.
-#   Redis dedup prevents duplicate sends (key: reminder:{todoId}, TTL 24h).
+# POST /api/cron/materialize-recurrence
+#   Schedule: 0 2 * * *  (daily at 02:00 UTC)
 #
-# Required env vars:
-#   RESEND_API_KEY       — Resend API key for sending transactional email
-#   EMAIL_FROM           — Sender address (e.g. "TodoAI <noreply@yourdomain.com>")
-#   CRON_SECRET          — Min 32-char random string; used to authenticate cron calls
-#   NEXT_PUBLIC_APP_URL  — Public base URL of the app (e.g. https://todoai.up.railway.app)
+# Required env vars: RESEND_API_KEY, EMAIL_FROM, CRON_SECRET, NEXT_PUBLIC_APP_URL
 # ---------------------------------------------------------------------------
+
+[[cronJobs]]
+name = "materialize-recurrence"
+schedule = "0 2 * * *"
+command = "curl -sf -X POST $RAILWAY_PUBLIC_DOMAIN/api/cron/materialize-recurrence -H 'Authorization: Bearer $CRON_SECRET'"
