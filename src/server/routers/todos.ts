@@ -3,6 +3,8 @@ import { protectedProcedure, router } from "../trpc/trpc";
 import { parseTodoFromNaturalLanguage, prioritizeTodos } from "@/lib/ai";
 import { invalidateCache, getCache, setCache } from "@/lib/redis";
 import { TRPCError } from "@trpc/server";
+import { createNextOccurrence } from "@/lib/recurrence";
+import type { RecurrenceRule } from "@/lib/recurrence";
 
 const todoSchema = z.object({
   title: z.string().min(1).max(500),
@@ -12,6 +14,7 @@ const todoSchema = z.object({
   tags: z.array(z.string()).default([]),
   listId: z.string().optional().nullable(),
   assigneeId: z.string().optional().nullable(),
+  recurrence: z.custom<RecurrenceRule>().optional().nullable(),
 });
 
 export const todosRouter = router({
@@ -164,6 +167,11 @@ export const todosRouter = router({
         where: { id: input.id },
         data: { completed: input.completed },
       });
+
+      if (input.completed && existing.recurrence) {
+        await createNextOccurrence(ctx.db, existing as Parameters<typeof createNextOccurrence>[1]);
+      }
+
       await invalidateCache(`todos:${ctx.userId}:*`);
       return todo;
     }),

@@ -6,6 +6,8 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { BreakdownButton } from "@/components/task-breakdown-modal";
 import { SmartScheduleButton } from "@/components/smart-schedule-button";
 import { SemanticSearchBar } from "@/components/semantic-search-bar";
+import { RecurrencePicker, RecurrenceBadge } from "@/components/recurrence-picker";
+import type { RecurrenceRule } from "@/lib/recurrence";
 
 type Priority = "low" | "medium" | "high" | "urgent";
 type Filter = "all" | "active" | "completed";
@@ -19,6 +21,7 @@ interface Todo {
   dueDate: Date | null;
   tags: string[];
   aiSuggested: boolean;
+  recurrence: RecurrenceRule | null;
 }
 
 const PRIORITY_BADGE: Record<Priority, string> = {
@@ -48,6 +51,7 @@ function InlineCreateForm({ onCreated }: { onCreated: () => void }) {
   const [priority, setPriority] = useState<Priority>("medium");
   const [dueDate, setDueDate] = useState("");
   const [tags, setTags] = useState("");
+  const [recurrence, setRecurrence] = useState<RecurrenceRule | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   const utils = trpc.useUtils();
@@ -58,6 +62,7 @@ function InlineCreateForm({ onCreated }: { onCreated: () => void }) {
       setPriority("medium");
       setDueDate("");
       setTags("");
+      setRecurrence(null);
       setExpanded(false);
       onCreated();
     },
@@ -71,6 +76,7 @@ function InlineCreateForm({ onCreated }: { onCreated: () => void }) {
       priority,
       dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+      recurrence,
     });
   }
 
@@ -140,6 +146,7 @@ function InlineCreateForm({ onCreated }: { onCreated: () => void }) {
               className="w-full text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
+          <RecurrencePicker value={recurrence} onChange={setRecurrence} />
         </div>
       )}
     </form>
@@ -154,7 +161,7 @@ function EditForm({
   onCancel,
 }: {
   todo: Todo;
-  onSave: (data: { title: string; priority: Priority; dueDate: string; tags: string }) => void;
+  onSave: (data: { title: string; priority: Priority; dueDate: string; tags: string; recurrence: RecurrenceRule | null }) => void;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(todo.title);
@@ -163,6 +170,7 @@ function EditForm({
     todo.dueDate ? new Date(todo.dueDate).toISOString().split("T")[0] : ""
   );
   const [tags, setTags] = useState(todo.tags.join(", "));
+  const [recurrence, setRecurrence] = useState<RecurrenceRule | null>(todo.recurrence);
 
   return (
     <div className="space-y-3">
@@ -207,6 +215,7 @@ function EditForm({
           className="w-full text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
         />
       </div>
+      <RecurrencePicker value={recurrence} onChange={setRecurrence} />
       <div className="flex gap-2 justify-end">
         <button
           onClick={onCancel}
@@ -215,7 +224,7 @@ function EditForm({
           Cancel
         </button>
         <button
-          onClick={() => onSave({ title, priority, dueDate, tags })}
+          onClick={() => onSave({ title, priority, dueDate, tags, recurrence })}
           disabled={!title.trim()}
           className="text-sm px-4 py-1.5 bg-indigo-600 text-white rounded-lg disabled:opacity-50 hover:bg-indigo-700 transition-colors"
         >
@@ -266,13 +275,14 @@ function TodoItem({
       <li className="bg-white border border-indigo-200 rounded-xl px-4 py-4 shadow-sm">
         <EditForm
           todo={todo}
-          onSave={({ title, priority, dueDate, tags }) => {
+          onSave={({ title, priority, dueDate, tags, recurrence }) => {
             update.mutate({
               id: todo.id,
               title: title.trim(),
               priority,
               dueDate: dueDate ? new Date(dueDate).toISOString() : null,
               tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+              recurrence,
             });
           }}
           onCancel={() => setEditing(false)}
@@ -354,6 +364,7 @@ function TodoItem({
               })}
             </span>
           )}
+          {todo.recurrence && <RecurrenceBadge rule={todo.recurrence} />}
           {todo.tags.slice(0, 3).map((tag) => (
             <span
               key={tag}

@@ -113,27 +113,31 @@ enum ListRole {
 }
 
 model Todo {
-  id          String     @id @default(cuid())
-  title       String
-  description String?
-  completed   Boolean    @default(false)
-  priority    Priority   @default(medium)
-  dueDate     DateTime?
-  tags        String[]
-  listId      String?
-  userId      String
-  assigneeId  String?
-  aiSuggested Boolean    @default(false)
-  aiContext   Json?
-  parentId    String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                String    @id @default(cuid())
+  title             String
+  description       String?
+  completed         Boolean   @default(false)
+  priority          Priority  @default(medium)
+  dueDate           DateTime?
+  tags              String[]
+  listId            String?
+  userId            String
+  assigneeId        String?
+  aiSuggested       Boolean   @default(false)
+  aiContext         Json?
+  parentId          String?
+  recurrence        Json?
+  recurringParentId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  list     List?     @relation(fields: [listId], references: [id], onDelete: SetNull)
-  comments Comment[]
-  parent   Todo?     @relation("TodoSubtasks", fields: [parentId], references: [id], onDelete: SetNull)
-  subtasks Todo[]    @relation("TodoSubtasks")
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list              List?     @relation(fields: [listId], references: [id], onDelete: SetNull)
+  comments          Comment[]
+  parent            Todo?     @relation("TodoSubtasks", fields: [parentId], references: [id], onDelete: SetNull)
+  subtasks          Todo[]    @relation("TodoSubtasks")
+  recurringParent   Todo?     @relation("RecurringInstances", fields: [recurringParentId], references: [id], onDelete: SetNull)
+  recurringChildren Todo[]    @relation("RecurringInstances")
 }
 
 enum Priority {
