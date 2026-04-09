@@ -145,7 +145,7 @@ export const todosRouter = router({
         data: {
           ...data,
           dueDate: data.dueDate ? new Date(data.dueDate) : data.dueDate,
-          recurrence: data.recurrence as Prisma.InputJsonValue ?? undefined,
+          recurrence: (data.recurrence as unknown as Prisma.InputJsonValue) ?? undefined,
         },
       });
       await invalidateCache(`todos:${ctx.userId}:*`);
