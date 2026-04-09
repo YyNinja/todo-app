@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import { FREE_TIER_LIST_LIMIT, isPro } from "@/lib/billing";
 
 export const listsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -28,6 +29,19 @@ export const listsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.userId },
+        select: { billingStatus: true },
+      });
+      if (user && !isPro(user)) {
+        const count = await ctx.db.list.count({ where: { ownerId: ctx.userId } });
+        if (count >= FREE_TIER_LIST_LIMIT) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "FREE_TIER_LIMIT_REACHED",
+          });
+        }
+      }
       return ctx.db.list.create({
         data: {
           ...input,

@@ -4,13 +4,20 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { trpc } from "@/lib/trpc";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 const LIST_COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
   "#f97316", "#eab308", "#22c55e", "#14b8a6", "#3b82f6",
 ];
 
-function CreateListModal({ onClose }: { onClose: () => void }) {
+function CreateListModal({
+  onClose,
+  onFreeTierLimit,
+}: {
+  onClose: () => void;
+  onFreeTierLimit: () => void;
+}) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState(LIST_COLORS[0]);
@@ -20,6 +27,12 @@ function CreateListModal({ onClose }: { onClose: () => void }) {
     onSuccess: () => {
       utils.lists.list.invalidate();
       onClose();
+    },
+    onError: (err) => {
+      if (err.message === "FREE_TIER_LIMIT_REACHED") {
+        onClose();
+        onFreeTierLimit();
+      }
     },
   });
 
@@ -65,7 +78,13 @@ function CreateListModal({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button
-            onClick={() => create.mutate({ name: name.trim(), description: description || undefined, color })}
+            onClick={() =>
+              create.mutate({
+                name: name.trim(),
+                description: description || undefined,
+                color,
+              })
+            }
             disabled={!name.trim() || create.isPending}
             className="text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50 hover:bg-indigo-700 transition-colors"
           >
@@ -80,13 +99,22 @@ function CreateListModal({ onClose }: { onClose: () => void }) {
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const [showCreate, setShowCreate] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const { data: lists, isLoading } = trpc.lists.list.useQuery();
+  const { data: billing } = trpc.billing.status.useQuery();
 
   const isMyTasks = pathname === "/dashboard";
+  const isFree = !billing || billing.billingStatus === "free" || billing.billingStatus === "cancelled";
 
   return (
     <>
-      {showCreate && <CreateListModal onClose={() => setShowCreate(false)} />}
+      {showCreate && (
+        <CreateListModal
+          onClose={() => setShowCreate(false)}
+          onFreeTierLimit={() => setShowUpgrade(true)}
+        />
+      )}
+      {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
       <nav className="w-56 h-full flex flex-col py-6 px-3 border-r border-gray-200 bg-white overflow-y-auto">
         <Link
           href="/dashboard"
@@ -159,6 +187,21 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             })}
           </ul>
         </div>
+
+        {isFree && (
+          <div className="mt-auto px-3 pb-4 pt-4 border-t border-gray-100">
+            <Link
+              href="/billing"
+              onClick={onNavigate}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors"
+            >
+              <svg className="h-4 w-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              <span className="text-xs font-medium text-indigo-700">Upgrade to Pro</span>
+            </Link>
+          </div>
+        )}
       </nav>
     </>
   );

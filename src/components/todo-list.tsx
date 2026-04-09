@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { keepPreviousData } from "@tanstack/react-query";
 
@@ -393,6 +393,7 @@ function TodoItem({
 export function TodoList() {
   const [filter, setFilter] = useState<Filter>("active");
   const [optimisticItems, setOptimisticItems] = useState<Todo[] | null>(null);
+  const [prevServerItems, setPrevServerItems] = useState<Todo[] | undefined>(undefined);
 
   const queryInput = {
     completed:
@@ -405,11 +406,11 @@ export function TodoList() {
   });
 
   const serverItems = (data as { items: Todo[]; nextCursor: string | null } | undefined)?.items;
-  const displayItems = optimisticItems ?? serverItems ?? [];
-
-  useEffect(() => {
+  if (prevServerItems !== serverItems) {
+    setPrevServerItems(serverItems);
     setOptimisticItems(null);
-  }, [serverItems]);
+  }
+  const displayItems = optimisticItems ?? serverItems ?? [];
 
   const handleOptimisticComplete = useCallback(
     (id: string, completed: boolean) => {

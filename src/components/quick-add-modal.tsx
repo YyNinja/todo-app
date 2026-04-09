@@ -33,9 +33,21 @@ export function QuickAddModal() {
     onSuccess: () => {
       utils.todos.list.invalidate();
       utils.todos.getTopThree.invalidate();
-      handleClose();
+      setOpen(false);
+      setText("");
+      setParsed(null);
+      setStep("input");
     },
   });
+
+  function handleClose() {
+    setOpen(false);
+    setText("");
+    setParsed(null);
+    setStep("input");
+    parseMutation.reset();
+    createMutation.reset();
+  }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -56,15 +68,6 @@ export function QuickAddModal() {
       setTimeout(() => textareaRef.current?.focus(), 0);
     }
   }, [open, step]);
-
-  function handleClose() {
-    setOpen(false);
-    setText("");
-    setParsed(null);
-    setStep("input");
-    parseMutation.reset();
-    createMutation.reset();
-  }
 
   function handleParse(e: React.FormEvent) {
     e.preventDefault();
