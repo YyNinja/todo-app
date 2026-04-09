@@ -6,6 +6,7 @@ import {
   breakdownTask,
   suggestDueDate,
   semanticSearchTodos,
+  type DailyBriefing,
 } from "@/lib/ai";
 import { getCache, setCache } from "@/lib/redis";
 import { TRPCError } from "@trpc/server";
@@ -15,7 +16,7 @@ export const aiRouter = router({
     const today = new Date().toISOString().split("T")[0];
     const cacheKey = `ai:briefing:${ctx.userId}:${today}`;
 
-    const cached = await getCache(cacheKey);
+    const cached = await getCache<DailyBriefing>(cacheKey);
     if (cached) return cached;
 
     const todos = await ctx.db.todo.findMany({
