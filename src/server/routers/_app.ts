@@ -5,6 +5,7 @@ import { commentsRouter } from "./comments";
 import { billingRouter } from "./billing";
 import { notificationsRouter } from "./notifications";
 import { aiRouter } from "./ai";
+import { integrationsRouter } from "./integrations";
 
 export const appRouter = router({
   todos: todosRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   billing: billingRouter,
   notifications: notificationsRouter,
   ai: aiRouter,
+  integrations: integrationsRouter,
 });
 
 export type AppRouter = typeof appRouter;
